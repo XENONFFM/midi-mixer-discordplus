@@ -3,20 +3,20 @@
   "id": "com.midi-mixer.discordplus",
   "name": "Discord+",
   "type": "node",
-  "version": "0.1",
+  "version": "0.0.1",
   "author": "https://github.com/XENONFFM",
   "main": "lib/main.js",
   "icon": "icon.svg",
   "settings": {
     "clientId": {
       "label": "Client ID",
-      "required": true,
-      "type": "text"
+      "type": "text",
+      "required": true
     },
     "clientSecret": {
       "label": "Client Secret",
-      "required": true,
-      "type": "password"
+      "type": "password",
+      "required": true
     },
     "status": {
       "label": "Status",

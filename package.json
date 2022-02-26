@@ -1,7 +1,7 @@
 {
-  "name": "com.midi-mixer.template",
-  "version": "1.0.1",
-  "description": "A template plugin for MIDI Mixer that demonstrates how to interact with MIDI Mixer's API.",
+  "name": "com.midi-mixer.discordplus",
+  "version": "0.0.1",
+  "description": "Discord+",
   "main": "lib/main.js",
   "directories": {
     "lib": "lib"
@@ -16,10 +16,11 @@
     "midi-mixer",
     "midi",
     "mixer",
-    "template",
+    "discord+",
+    "discordplus",
     "plugin"
   ],
-  "author": "Jack Williams <@jpwilliams>",
+  "author": "XENONFFM https://github.com/XENONFFM",
   "license": "ISC",
   "dependencies": {
     "conf": "^10.1.1",
@@ -27,7 +28,9 @@
     "midi-mixer-plugin": "^0.4.0"
   },
   "bundledDependencies": [
-    "midi-mixer-plugin"
+    "midi-mixer-plugin",
+    "discord-rpc",
+    "conf"
   ],
   "devDependencies": {
     "@types/discord-rpc": "^4.0.0",
