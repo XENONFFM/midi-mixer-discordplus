@@ -1,43 +1,45 @@
-# Template Plugin
+# Discord+
 
-This is a template plugin that demonstrates how to interact with MIDI Mixer's API in order to register buttons and groups, as well as provide a good user experience for your users.
+## Getting started
 
-This file is a `PAGE.md` file specified in the plugin's folder, and is simply a rendered markdown file. This can include a huge variety of formatting and is great for letting your users know how to use the plugin you've developed.
+- Requiremnts:
+    - Discord application [Discord Developer Portal](https://discord.com/developers/applications)
+    - Offical discord client running localy
 
-## Examples
+- Settings:
+    - **Client ID**: Id of your discord application
+    - **Client Secret**: secret of your discord application
+    - **Number of VoiceUsers**: Max number of users you can control
 
-For code examples of how to interact with MIDI Mixer, check out the `src` directory in the plugin itself.
+- Assignments:
+    Assign "voiceUserX" Assigments to the desired groups.
+    As soon as you join a channel the assignments will be linked to users in your voice channel.
+    -> The name of the assignment will change to the name of the user it will control.
 
-## Settings
+- Info:
+    If you start midi-mixer or this plugin after connecting to a voice channel, you have to reconnect to the channel to control the users in this channel.
 
-One of the crucial parts of developing a plugin (and something not documented directly in code) is the JSON definition of settings. Notarised using TypeScript, the `settings` key in your `package.json` file can be described like so:
+## Features
 
-```ts
-interface PluginSetting {
-  /**
-   * The label for the field to be shown in the plugin's settings page.
-   */
-  label: string;
+- Control your mic volume, mute and deaf state
+- Control the volume and mute state of users in your current voice channel (works on servers,dm and group dm)
 
-  /**
-   * If marked as `true`, this field will be marked as required in the user's
-   * UI.
-   */
-  required?: boolean;
+## Controls
 
-  /**
-   * The input type for this setting.
-   */
-  type: "text" | "password" | "status" | "button";
+### Assignments
 
-  /**
-   * If no input has been given by either the user or the plugin, you can
-   * provide an optional string for the value to fall back to.
-   */
-  fallback?: string;
-}
+- #### VoiceUserX
+  - **volume**: users mic volume
+  - **mute**: users mic mute
 
-type PluginSettings = Record<string, PluginSetting>;
-```
+- #### Input
+  - **volume**: client mic volume
+  - **mute**: client mic mute
 
+- #### Output
+  - **mute**: client speaker deaf
 
+### Buttons
+
+- **Toggle mute**: client mic mute
+- **Toggle deafen**: client speaker deaf

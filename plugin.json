@@ -1,16 +1,36 @@
 {
   "$schema": "./node_modules/midi-mixer-plugin/plugin.schema.json",
-  "id": "com.midi-mixer.template",
-  "name": "Template Plugin",
+  "id": "com.midi-mixer.discordplus",
+  "name": "Discord+",
   "type": "node",
-  "version": "1.0.1",
-  "author": "MIDI Mixer",
+  "version": "0.1",
+  "author": "https://github.com/XENONFFM",
   "main": "lib/main.js",
+  "icon": "icon.svg",
   "settings": {
-    "text": {
-      "label": "A text field",
+    "clientId": {
+      "label": "Client ID",
+      "required": true,
+      "type": "text"
+    },
+    "clientSecret": {
+      "label": "Client Secret",
+      "required": true,
+      "type": "password"
+    },
+    "status": {
+      "label": "Status",
+      "type": "status",
+      "fallback": "Disconnected"
+    },
+    "reconnect": {
+      "label": "Reconnect",
+      "type": "button"
+    },
+    "userCount": {
+      "label": "Number of VoiceUsers",
       "type": "text",
-      "required": false
+      "fallback": "8"
     }
   }
 }
