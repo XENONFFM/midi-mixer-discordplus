@@ -103,6 +103,7 @@ export class DcApi extends EventEmitter {
     this.rpc.on("VOICE_STATE_CREATE", (data: any) => {
       console.log("VOICE_STATE_CREATE event triggered", data);
       this.newUser(data);
+      this.reorderVoiceUsers();
     });
     // @ts-ignore return type: @voiceSettingsPayload
     this.rpc.on("VOICE_STATE_UPDATE", (data: voiceSettingsPayload) => {
@@ -123,8 +124,8 @@ export class DcApi extends EventEmitter {
     this.client = new voiceClient(this.rpc, await this.rpc.getVoiceSettings());
 
     // @ts-ignore
-    let connected = await this.rpc.request("GET_SELECTED_VOICE_CHANNEL");
-    if(connected.id) this.connectToVoiceChannel(connected.id);
+    let connectedToVoiceChannel = await this.rpc.request("GET_SELECTED_VOICE_CHANNEL");
+    if(connectedToVoiceChannel.id) this.connectToVoiceChannel(connectedToVoiceChannel.id);
   }
 
   public async disconnect(): Promise<void> {
@@ -178,6 +179,7 @@ export class DcApi extends EventEmitter {
           this.newUser(voice_states[i]);
         }
       }
+      this.reorderVoiceUsers();
       this.subscribeToUserVoiceChanges(voiceChannelId);
     }
   }
@@ -186,7 +188,7 @@ export class DcApi extends EventEmitter {
     //console.log("disconnected from voice channel");
     this.channel = undefined;
     for (let i = 0; i < this.user?.length; i++) {
-      this.emit("User", { id: i });
+      this.emit("User", { type: "DELETE", id: i });
     }
     this.user = [];
     this.currentVcId = undefined;
@@ -208,24 +210,29 @@ export class DcApi extends EventEmitter {
     if (vSP.user.id != this.client?.id) {
       let newUser: voiceUser = new voiceUser(this.rpc, vSP);
       this.user.push(newUser);
-      this.emit("User", { id: this.user.length - 1, name: vSP.nick, active: true, mute: vSP.mute, volume: vSP.volume });
+      this.emit("User", { type: "CREATE", id: this.user.length - 1, name: vSP.nick, active: true, mute: vSP.mute, volume: vSP.volume });
     }
   }
 
   private async userDisconected(vSP: voiceSettingsPayload) {
     for (let i = 0; i < this.user?.length; i++) {
       if (this.user[i].id == vSP.user.id) {
-        this.emit("User", { id: i });
+        this.emit("User", { type: "DELETE", id: i });
         this.user.splice(i, 1);
-        this.updateUserOrder(i);
+        this.reorderVoiceUsers();
       }
     }
   }
 
-  private updateUserOrder(start: number) {
-    this.emit("User", { id: this.user.length + 1, active: false });
-    for(let i = start; this.user.length; i++) {
-      this.emit("User", {id: i, name: this.user[i].getVSP().nick, mute: this.user[i].getVSP().mute, volume: this.user[i].getVSP().volume})
+  private reorderVoiceUsers() {
+    for(let i = 0; i < this.user.length; i++) {
+      this.emit("User", { type: "DELETE", id: i});
+    }
+
+    this.user.sort( (a, b) => a.getVSP().nick.localeCompare(b.getVSP().nick, 'fr', {ignorePunctuation: true}));
+
+    for(let j = 0; j < this.user.length; j++) {
+      this.emit("User", { type: "CREATE", id: j, name: this.user[j].getVSP().nick, mute: this.user[j].getVSP().mute, volume: this.user[j].getVSP().volume})
     }
   }
 
@@ -254,8 +261,8 @@ export class DcApi extends EventEmitter {
   }
 
   private changedUserSettings(id: number, newVSP: voiceSettingsPayload, currentVSP: voiceSettingsPayload) {
-    if (newVSP.mute != currentVSP.mute) this.emit("User", { id: id, name: newVSP.nick, mute: newVSP.mute });
-    if (newVSP.volume != currentVSP.volume) this.emit("User", { id: id, name: newVSP.nick, volume: newVSP.volume });
+    if (newVSP.mute != currentVSP.mute) this.emit("User", { type: "UPDATE", id: id, name: newVSP.nick, mute: newVSP.mute });
+    if (newVSP.volume != currentVSP.volume) this.emit("User", { type: "UPDATE", id: id, name: newVSP.nick, volume: newVSP.volume });
   }
 }
 

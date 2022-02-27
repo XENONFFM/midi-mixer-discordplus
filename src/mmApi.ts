@@ -78,16 +78,26 @@ export class MmApi {
   }
 
   public updateUserGroup(data: userUpdate) {
-    if (data.name) {
-      this.userGroup[data.id].name = data.name;
-      if (data.mute) this.userGroup[data.id].muted = data.mute;
-      if (data.volume) this.userGroup[data.id].volume = data.volume / 200;
-    } else {
-      this.userGroup[data.id].name = "VoiceUser " + (data.id + 1);
-      this.userGroup[data.id].muted = false;
-      this.userGroup[data.id].volume = 0;
+    if (this.userGroup[data.id]) {
+      switch (data.type) {
+        case("DELETE"): {
+          this.userGroup[data.id].name = "VoiceUser " + (data.id + 1);
+          this.userGroup[data.id].muted = false;
+          this.userGroup[data.id].volume = 0;
+        }
+        case("CREATE"): {
+          if(data.name) {
+            this.userGroup[data.id].name = data.name;
+            if (data.mute) this.userGroup[data.id].muted = data.mute;
+            if (data.volume) this.userGroup[data.id].volume = data.volume / 200;
+          }
+        }
+        case("UPDATE"): {
+          if (data.mute) this.userGroup[data.id].muted = data.mute;
+          if (data.volume) this.userGroup[data.id].volume = data.volume / 200;
+        }
+      }
     }
-
   }
 
   public updateClientGroup(data: clientUpdate) {

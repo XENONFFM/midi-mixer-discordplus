@@ -33,6 +33,7 @@ import EventEmitter from "events";
   }
  
   export type userUpdate = {
+    type: "CREATE" | "DELETE" | "UPDATE" | "REORDER",
     id: number,
     name?: string,
     mute?: boolean,
