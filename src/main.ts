@@ -31,12 +31,7 @@ const connect = async () => {
    */
   await cleanUpConnections();
 
-  $MM.setSettingsStatus("status", "Getting plugin settings...");
   const settings = await $MM.getSettings();
-
-  $MM.getSettings().then((settings) => {
-    console.log("Current settings:", settings);
-  });
 
   const clientId = settings.clientId as string;
   const clientSecret = settings.clientSecret as string;
@@ -45,24 +40,23 @@ const connect = async () => {
   const clientIdValid = Boolean(clientId) && typeof clientId === "string";
   const clientSecretValid = Boolean(clientSecret) && typeof clientSecret === "string";
 
-  if (!clientIdValid || !clientSecretValid) {
-    return void $MM.setSettingsStatus( "status", "Error: No or incorrect Client ID or Client Secret." );
-  }
+  if (!clientIdValid || !clientSecretValid) return void $MM.setSettingsStatus( "status", "Error: No or incorrect Client ID or Client Secret." );
 
   dcApi = new DcApi(clientId, clientSecret);
   mmApi = new MmApi(dcApi);
+  mmApi.setup(+userCount);
 
+  $MM.setSettingsStatus("status", "Connecting to Discord ...");
   try {
     await dcApi.connect();
   } catch (err) {
-    console.error(err);
-    $MM.setSettingsStatus("status", "Error, see developer console for further info.");
+    console.error("Disconected, could not establish connection to discord.", err);
     cleanUpConnections();
   }
+  $MM.setSettingsStatus("status", "Connected");
+
   dcApi.on("Client", (data: clientUpdate) => { mmApi?.updateClientGroup(data) });
   dcApi.on("User", (data: userUpdate) => { mmApi?.updateUserGroup(data) });
-  $MM.setSettingsStatus("status", "Connected");
-  mmApi.setup(+userCount);
 };
 
 $MM.onSettingsButtonPress("reconnect", connect);

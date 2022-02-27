@@ -6,10 +6,8 @@ import { voiceChannelSelectPayload, voiceSettingsPayload } from "./dcApiTypes";
 export class DcApi extends EventEmitter {
   private static scopes = [
     "rpc",
-    "rpc.activities.write",
     "rpc.voice.read",
     "rpc.voice.write",
-    "rpc.notifications.read",
   ];
 
   private rpc: RPC.Client;
@@ -32,71 +30,58 @@ export class DcApi extends EventEmitter {
   }
 
   public async connect(): Promise<void> {
+    let connected = false;
     let authToken = "";
 
     try {
-      [authToken] = await Promise.all([
-        new Promise<string>((resolve, reject) => {
-          try {
-            resolve(config.get(Keys.AuthToken) as string);
-          } catch (err) {
-            reject(err);
-          }
-        }),
-        this.rpc.connect(this.clientId),
-      ]);
+      authToken = config.get(Keys.AuthToken) as string;
     } catch (err) {
-      console.error(err);
-      console.error("Couldn't find Discord running");
-      throw err;
+      console.log("No auth token", err);
     }
 
-    if (authToken && typeof authToken === "string") {
-      try {
-        await this.rpc.login({
-          clientId: this.clientId,
-          accessToken: authToken,
-          scopes: DcApi.scopes,
-        });
-      } catch (err) {
-        console.warn("Failed to authorise using existing token; stripping from config");
-
-        config.delete(Keys.AuthToken);
+    while (!connected) {
+      if (authToken && typeof authToken === "string") {
+        try {
+          await this.rpc.login({
+            clientId: this.clientId,
+            accessToken: authToken,
+            scopes: DcApi.scopes,
+          });
+        } catch (err) {
+          console.warn("Failed to authorise using existing token.");
+          config.delete(Keys.AuthToken);
+        }
       }
+
+      connected = Boolean(this.rpc.application);
+      if (!connected) connected = await this.authorize();
+      
     }
-
-    const isAuthed = Boolean(this.rpc.application);
-
-    if (!isAuthed) {
-      try {
-        await this.authorize();
-      } catch (err) {
-        console.error(err);
-
-        console.error("User declined authorisation; cannot continue.");
-      }
-    }
+    
     this.myClientId = this.rpc.user.id;
-
     this.setup();
   }
 
   private async authorize() {
     console.log("Waiting for user authorisation");
 
-    await this.rpc.login({
-      clientId: this.clientId,
-      clientSecret: this.clientSecret,
-      scopes: DcApi.scopes,
-      redirectUri: "http://localhost/",
-    } as any);
+    try {
+      await this.rpc.login({
+        clientId: this.clientId,
+        clientSecret: this.clientSecret,
+        scopes: DcApi.scopes,
+        redirectUri: "http://localhost/",
+      } as any);
+    } catch {
+      console.error("User declined authorisation.");
+      this.emit("Error", "User declined authorisation.");
+    }
 
-    const accessToken = (this.rpc as any).accessToken;
-
-    if (!accessToken)
-      throw new Error("Logged in, but not access token available");
-
+    let accessToken = (this.rpc as any).accessToken;
+    if (!accessToken) throw new Error("Logged in, but not access token available");
     config.set(Keys.AuthToken, accessToken);
+
+    return Boolean(this.rpc.application);
   }
 
   private async setup() {
@@ -136,6 +121,10 @@ export class DcApi extends EventEmitter {
     this.rpc.subscribe("VOICE_CHANNEL_SELECT", {});
 
     this.client = new voiceClient(this.rpc, await this.rpc.getVoiceSettings());
+
+    // @ts-ignore
+    let connected = await this.rpc.request("GET_SELECTED_VOICE_CHANNEL");
+    if(connected.id) this.connectToVoiceChannel(connected.id);
   }
 
   public async disconnect(): Promise<void> {
