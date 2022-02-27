@@ -18,6 +18,7 @@ export class MmApi {
   private userGroup: Assignment[] = [];
   private clientGroup?: Record<DcFader, Assignment> | null = null;
   private dcApi: DcApi;
+
   constructor(discordApi: DcApi) {
     this.dcApi = discordApi;
   }
@@ -39,14 +40,14 @@ export class MmApi {
     }
 
     this.clientGroup = {
-      [DcFader.InputVolume]: new Assignment("Input", { name: "Input", throttle: 250 })
+      [DcFader.InputVolume]: new Assignment("Input", { name: "Input", throttle: 50 })
         .on("mutePressed", async () => {
           if (this.dcApi.client) this.dcApi.client.toggleMute();
         })
         .on("volumeChanged", async (level: number) => {
           if (this.dcApi.client) this.dcApi.client.setInputVolume(level * 200);
         }),
-      [DcFader.OutputVolume]: new Assignment("Output", { name: "Output", throttle: 250 })
+      [DcFader.OutputVolume]: new Assignment("Output", { name: "Output", throttle: 50 })
         .on("mutePressed", async () => {
           if (this.dcApi.client) this.dcApi.client.toggleDeaf();
         })
@@ -57,7 +58,7 @@ export class MmApi {
     this.buttons = {
       [DcButton.ToggleMute]: new ButtonType(DcButton.ToggleMute, {
         name: "Toggle mute | Discord+",
-        active: true,
+        active: false,
       }).on("pressed", async () => {
         if (this.dcApi.client) this.dcApi.client.toggleMute();
       }),
@@ -103,8 +104,12 @@ export class MmApi {
   public updateClientGroup(data: clientUpdate) {
     if (this.clientGroup) {
       if (data.volume) this.clientGroup[DcFader.InputVolume].volume = data.volume / 200;
-      if (data.mute) this.clientGroup[DcFader.InputVolume].muted = data.mute;
+      if (data.mute) {this.clientGroup[DcFader.InputVolume].muted = data.mute;}
       if (data.deaf) this.clientGroup[DcFader.OutputVolume].muted = data.deaf;
+    }
+    if (this.buttons) {
+      if(data.mute) this.buttons[DcButton.ToggleMute].active = data.mute;
+      if(data.deaf) this.buttons[DcButton.ToggleDeafen].active = data.deaf;
     }
   }
 }

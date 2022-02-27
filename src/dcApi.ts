@@ -57,7 +57,7 @@ export class DcApi extends EventEmitter {
       if (!connected) connected = await this.authorize();
       
     }
-    
+    console.log("Connected", this.rpc.application);
     this.myClientId = this.rpc.user.id;
     this.setup();
   }
@@ -78,8 +78,7 @@ export class DcApi extends EventEmitter {
     }
 
     let accessToken = (this.rpc as any).accessToken;
-    if (!accessToken) throw new Error("Logged in, but not access token available");
-    config.set(Keys.AuthToken, accessToken);
+    if (accessToken) config.set(Keys.AuthToken, accessToken);
 
     return Boolean(this.rpc.application);
   }
@@ -136,7 +135,6 @@ export class DcApi extends EventEmitter {
   }
 
   private async updateClientVoiceSettings(vS: VoiceSettings) { //TODO rework
-    //console.log(vS);
     if (this.client) {
       this.changedClientSettings(vS, this.client.getVS());
       this.client.updateVoiceSettings(vS);
@@ -144,9 +142,7 @@ export class DcApi extends EventEmitter {
   }
 
   private async updateClientVoiceConnection(voiceChannelInfo: voiceChannelSelectPayload) {
-    //console.log(voiceChannelInfo.channel_id);
     let voiceChannelId = voiceChannelInfo.channel_id;
-    //console.log("vcId: " ,voiceChannelId, ", previousVcId: ", this.previousVcId, ", currentVcId: ", this.currentVcId);
     this.previousVcId = this.currentVcId;
 
     if (!this.previousVcId && voiceChannelId) {//Connected to a voice channel
@@ -163,19 +159,15 @@ export class DcApi extends EventEmitter {
   }
 
   private async connectToVoiceChannel(voiceChannelId: string) {
-    //console.log("connected to voice channel:", voiceChannelId)
     this.currentVcId = voiceChannelId;
 
     this.channel = await this.rpc.getChannel(voiceChannelId);
     let voice_states = this.channel.voice_states;
-    console.log("Users in Channel:", voice_states);
 
     if (voice_states) {
       this.user = [];
       for (let i = 0; i < voice_states.length; i++) {
         if (voice_states[i].user.id != this.myClientId) {
-          //this.users?.push(voice_states[i])
-          //this.user.push(new voiceUser(this.rpc, voice_states[i]));
           this.newUser(voice_states[i]);
         }
       }
@@ -185,7 +177,6 @@ export class DcApi extends EventEmitter {
   }
 
   private async disconnectFormVoiceChannel(voiceChannelId: string) {
-    //console.log("disconnected from voice channel");
     this.channel = undefined;
     for (let i = 0; i < this.user?.length; i++) {
       this.emit("User", { type: "DELETE", id: i });
