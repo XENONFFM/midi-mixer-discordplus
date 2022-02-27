@@ -2,7 +2,6 @@ import "midi-mixer-plugin";
 import { DcApi } from "./dcApi";
 import { clientUpdate, userUpdate } from "./dcApiTypes";
 import { MmApi } from "./mmApi";
-import MMsettings from "../plugin.json";
 
 let dcApi: DcApi | null = null;
 let mmApi: MmApi | null = null;
@@ -41,7 +40,7 @@ const connect = async () => {
   const clientIdValid = Boolean(clientId) && typeof clientId === "string";
   const clientSecretValid = Boolean(clientSecret) && typeof clientSecret === "string";
 
-  if (!userCount) userCount = MMsettings.settings.userCount.fallback;
+  if (!userCount) userCount = "8";
 
   if (!clientIdValid || !clientSecretValid) return void $MM.setSettingsStatus( "status", "Error: No or incorrect Client ID or Client Secret." );
 

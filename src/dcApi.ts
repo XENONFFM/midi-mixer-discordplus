@@ -125,7 +125,7 @@ export class DcApi extends EventEmitter {
 
     // @ts-ignore
     let connectedToVoiceChannel = await this.rpc.request("GET_SELECTED_VOICE_CHANNEL");
-    if(connectedToVoiceChannel.id) this.connectToVoiceChannel(connectedToVoiceChannel.id);
+    if(connectedToVoiceChannel) this.connectToVoiceChannel(connectedToVoiceChannel.id);
   }
 
   public async disconnect(): Promise<void> {
