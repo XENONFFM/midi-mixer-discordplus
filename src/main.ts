@@ -49,6 +49,7 @@ const connect = async () => {
   mmApi.setup(+userCount);
 
   $MM.setSettingsStatus("status", "Connecting to Discord ...");
+  dcApi.on("Status" || "Warn" || "Error", (message: string) => { $MM.setSettingsStatus("status", message) });
   try {
     await dcApi.connect();
   } catch (err) {

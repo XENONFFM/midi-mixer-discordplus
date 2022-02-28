@@ -20,8 +20,7 @@
     },
     "status": {
       "label": "Status",
-      "type": "status",
-      "fallback": "Disconnected"
+      "type": "status"
     },
     "reconnect": {
       "label": "Reconnect",

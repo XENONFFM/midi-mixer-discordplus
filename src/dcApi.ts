@@ -9,19 +9,19 @@ export class DcApi extends EventEmitter {
     "rpc.voice.read",
     "rpc.voice.write",
   ];
-
+  
   private rpc: RPC.Client;
-
+  
   private clientId: string;
   private clientSecret: string;
-
+  
   private channel?: RPC.Channel;
   private myClientId: string = "";
   private currentVcId?: string;
   private previousVcId?: string;
   public client?: voiceClient;
   public user: voiceUser[] = [];
-
+  
   constructor(clientId: string, clientSecret: string) {
     super()
     this.rpc = new RPC.Client({ transport: "ipc" });
@@ -31,31 +31,33 @@ export class DcApi extends EventEmitter {
 
   public async connect(): Promise<void> {
     let connected = false;
-    let authToken = "";
+    let logedin = false;
+    let accessToken = config.get(Keys.AuthToken) as string;
 
-    try {
-      authToken = config.get(Keys.AuthToken) as string;
-    } catch (err) {
-      console.log("No auth token", err);
-    }
+    this.rpc.on("ready", () => { console.log("READY"); logedin = true });
+    this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
 
     while (!connected) {
-      if (authToken && typeof authToken === "string") {
-        try {
-          await this.rpc.login({
-            clientId: this.clientId,
-            accessToken: authToken,
-            scopes: DcApi.scopes,
-          });
-        } catch (err) {
-          console.warn("Failed to authorise using existing token.");
-          config.delete(Keys.AuthToken);
-        }
-      }
+      await this.rpc.connect(this.clientId)
+        .catch(async (err) => {
+          console.warn("Could not establish connection to discord. retrying in 15 seconds.", err);
+          this.emit("Warn", "No discord client running");
+          await new Promise(resolve => setTimeout(resolve, 15000));
+        })
+    }
 
-      connected = Boolean(this.rpc.application);
-      if (!connected) connected = await this.authorize();
-      
+    while (!logedin) {
+      if (accessToken && typeof accessToken === "string") {
+        await this.rpc.login({ clientId: this.clientId, accessToken: accessToken, scopes: DcApi.scopes })
+          .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
+          .catch(async (err) => {
+            config.delete(Keys.AuthToken);
+            console.warn("Failed to authorise using existing token.", err);
+            await this.authorize();
+          })
+      } else {
+        await this.authorize();
+      }
     }
     console.log("Connected", this.rpc.application);
     this.myClientId = this.rpc.user.id;
@@ -64,23 +66,15 @@ export class DcApi extends EventEmitter {
 
   private async authorize() {
     console.log("Waiting for user authorisation");
+    this.emit("Warn", "Waiting for user authorisation");
 
-    try {
-      await this.rpc.login({
-        clientId: this.clientId,
-        clientSecret: this.clientSecret,
-        scopes: DcApi.scopes,
-        redirectUri: "http://localhost/",
-      } as any);
-    } catch {
-      console.error("User declined authorisation.");
-      this.emit("Error", "User declined authorisation.");
-    }
-
-    let accessToken = (this.rpc as any).accessToken;
-    if (accessToken) config.set(Keys.AuthToken, accessToken);
-
-    return Boolean(this.rpc.application);
+    await this.rpc.login({ clientId: this.clientId, clientSecret: this.clientSecret, scopes: DcApi.scopes, redirectUri: "http://localhost/" })
+      .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
+      .catch(async (err) => {
+        console.warn("User declined authorisation. Retrying in 5 seconds.", err);
+        this.emit("Warn", "User declined authorisation. Retrying in 5 seconds.");
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      });
   }
 
   private async setup() {
