@@ -30,7 +30,7 @@ export class MmApi {
 
   private initializeFaders(userCount: number) {
     for (let i = 0; i <= (userCount - 1); i++) {
-      this.userGroup.push(new Assignment("DcUser" + i, { name: "VoiceUser " + (i + 1), throttle: 50 })
+      this.userGroup.push(new Assignment("DcUser" + i, { name: "VoiceUser " + (i + 1), volume: 0, throttle: 50 })
         .on("mutePressed", async () => {
           if (this.dcApi.user[i]) this.dcApi.user[i].toggleMute();
         })
@@ -40,14 +40,14 @@ export class MmApi {
     }
 
     this.clientGroup = {
-      [DcFader.InputVolume]: new Assignment("Input", { name: "Input", throttle: 50 })
+      [DcFader.InputVolume]: new Assignment("Input", { name: "Input", volume: 0,  throttle: 50 })
         .on("mutePressed", async () => {
           if (this.dcApi.client) this.dcApi.client.toggleMute();
         })
         .on("volumeChanged", async (level: number) => {
           if (this.dcApi.client) this.dcApi.client.setInputVolume(level * 200);
         }),
-      [DcFader.OutputVolume]: new Assignment("Output", { name: "Output", throttle: 50 })
+      [DcFader.OutputVolume]: new Assignment("Output", { name: "Output", volume: 0,  throttle: 50 })
         .on("mutePressed", async () => {
           if (this.dcApi.client) this.dcApi.client.toggleDeaf();
         })
