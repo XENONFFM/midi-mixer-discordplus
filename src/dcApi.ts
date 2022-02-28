@@ -10,7 +10,7 @@ export class DcApi extends EventEmitter {
     "rpc.voice.write",
   ];
   
-  private rpc: RPC.Client;
+  private rpc?: RPC.Client;
   
   private clientId: string;
   private clientSecret: string;
@@ -24,27 +24,44 @@ export class DcApi extends EventEmitter {
   
   constructor(clientId: string, clientSecret: string) {
     super()
-    this.rpc = new RPC.Client({ transport: "ipc" });
     this.clientId = clientId;
     this.clientSecret = clientSecret;
   }
-
+  
   public async connect(): Promise<void> {
     let connected = false;
     let logedin = false;
     let accessToken = config.get(Keys.AuthToken) as string;
-
+    this.rpc = new RPC.Client({ transport: "ipc" });
+    
+    /**
+    console.log("Socket1:", (this.rpc as any).transport);
+    while(!(this.rpc as any).transport.socket) {
+      console.warn("Discord Application not running.");
+      this.emit("Warn", "Discord Application not running.");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      this.rpc = new RPC.Client({ transport: "ipc" });
+    }*/
+    
     this.rpc.on("ready", () => { console.log("READY"); logedin = true });
     this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
-
+    // @ts-ignore
+    console.log("Socket2:", this.rpc, this.rpc._connectPromise);
+    
     while (!connected) {
       await this.rpc.connect(this.clientId)
         .catch(async (err) => {
           console.warn("Could not establish connection to discord. retrying in 15 seconds.", err);
           this.emit("Warn", "No discord client running");
-          await new Promise(resolve => setTimeout(resolve, 15000));
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          this.rpc = new RPC.Client({ transport: "ipc" });
+          this.rpc.on("ready", () => { console.log("READY"); logedin = true });
+          this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
         })
     }
+
+    // @ts-ignore
+    console.log("Socket3:", this.rpc, this.rpc._connectPromise);
 
     while (!logedin) {
       if (accessToken && typeof accessToken === "string") {
@@ -68,7 +85,7 @@ export class DcApi extends EventEmitter {
     console.log("Waiting for user authorisation");
     this.emit("Warn", "Waiting for user authorisation");
 
-    await this.rpc.login({ clientId: this.clientId, clientSecret: this.clientSecret, scopes: DcApi.scopes, redirectUri: "http://localhost/" })
+    await this.rpc?.login({ clientId: this.clientId, clientSecret: this.clientSecret, scopes: DcApi.scopes, redirectUri: "http://localhost/" })
       .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
       .catch(async (err) => {
         console.warn("User declined authorisation. Retrying in 5 seconds.", err);
@@ -110,10 +127,17 @@ export class DcApi extends EventEmitter {
     });
 
     // @ts-ignore
-    this.rpc.subscribe("VOICE_SETTINGS_UPDATE", {});
+    this.rpc.subscribe("VOICE_SETTINGS_UPDATE", {}).catch( (err: any) => {
+      console.warn("Error VOICE_SETTINGS_UPDATE", err);
+      if (err.message == "connection closed") this.reconnect();
+    });
     // @ts-ignore
-    this.rpc.subscribe("VOICE_CHANNEL_SELECT", {});
+    this.rpc.subscribe("VOICE_CHANNEL_SELECT", {}).catch( (err: any) => {
+      console.warn("Error VOICE_CHANNEL_SELECT", err);
+      if (err.message == "connection closed") this.reconnect();
+    });
 
+    if(this.rpc)
     this.client = new voiceClient(this.rpc, await this.rpc.getVoiceSettings());
 
     // @ts-ignore
@@ -125,7 +149,12 @@ export class DcApi extends EventEmitter {
     if (this.currentVcId) {
       this.unsubscribeToUserVoiceChanges(this.currentVcId);
     }
-    await this.rpc.destroy();
+    await this.rpc?.destroy();
+  }
+
+  public async reconnect() {
+    this.rpc = undefined;
+    this.connect();
   }
 
   private async updateClientVoiceSettings(vS: VoiceSettings) { //TODO rework
@@ -154,9 +183,11 @@ export class DcApi extends EventEmitter {
 
   private async connectToVoiceChannel(voiceChannelId: string) {
     this.currentVcId = voiceChannelId;
-
-    this.channel = await this.rpc.getChannel(voiceChannelId);
-    let voice_states = this.channel.voice_states;
+    let voice_states;
+    if(this.rpc) {
+      this.channel = await this.rpc.getChannel(voiceChannelId);
+      voice_states = this.channel.voice_states;
+    }
 
     if (voice_states) {
       this.user = [];
@@ -192,7 +223,7 @@ export class DcApi extends EventEmitter {
   }
 
   private async newUser(vSP: voiceSettingsPayload) {
-    if (vSP.user.id != this.client?.id) {
+    if (vSP.user.id != this.client?.id && this.rpc) {
       let newUser: voiceUser = new voiceUser(this.rpc, vSP);
       this.user.push(newUser);
       this.emit("User", { type: "CREATE", id: this.user.length - 1, name: vSP.nick, active: true, mute: vSP.mute, volume: vSP.volume });
@@ -223,11 +254,20 @@ export class DcApi extends EventEmitter {
 
   private subscribeToUserVoiceChanges(voiceChannelId: string) {
     // @ts-ignore
-    this.rpc.subscribe("VOICE_STATE_CREATE", { channel_id: voiceChannelId });
+    this.rpc.subscribe("VOICE_STATE_CREATE", { channel_id: voiceChannelId }).catch( (err: any) => {
+      console.warn("Error VOICE_STATE_CREATE", err);
+      if (err.message == "connection closed") this.reconnect();
+    });
     // @ts-ignore
-    this.rpc.subscribe("VOICE_STATE_UPDATE", { channel_id: voiceChannelId });
+    this.rpc.subscribe("VOICE_STATE_UPDATE", { channel_id: voiceChannelId }).catch( (err: any) => {
+      console.warn("Error VOICE_STATE_UPDATE", err);
+      if (err.message == "connection closed") this.reconnect();
+    });
     // @ts-ignore
-    this.rpc.subscribe("VOICE_STATE_DELETE", { channel_id: voiceChannelId });
+    this.rpc.subscribe("VOICE_STATE_DELETE", { channel_id: voiceChannelId }).catch( (err: any) => {
+      console.warn("Error VOICE_STATE_DELETE", err);
+      if (err.message == "connection closed") this.reconnect();
+    });
   }
 
   private async unsubscribeToUserVoiceChanges(voiceChannelId: string) {
