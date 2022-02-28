@@ -34,19 +34,8 @@ export class DcApi extends EventEmitter {
     let accessToken = config.get(Keys.AuthToken) as string;
     this.rpc = new RPC.Client({ transport: "ipc" });
     
-    /**
-    console.log("Socket1:", (this.rpc as any).transport);
-    while(!(this.rpc as any).transport.socket) {
-      console.warn("Discord Application not running.");
-      this.emit("Warn", "Discord Application not running.");
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      this.rpc = new RPC.Client({ transport: "ipc" });
-    }*/
-    
     this.rpc.on("ready", () => { console.log("READY"); logedin = true });
     this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
-    // @ts-ignore
-    console.log("Socket2:", this.rpc, this.rpc._connectPromise);
     
     while (!connected) {
       await this.rpc.connect(this.clientId)
@@ -59,9 +48,6 @@ export class DcApi extends EventEmitter {
           this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
         })
     }
-
-    // @ts-ignore
-    console.log("Socket3:", this.rpc, this.rpc._connectPromise);
 
     while (!logedin) {
       if (accessToken && typeof accessToken === "string") {
@@ -76,7 +62,7 @@ export class DcApi extends EventEmitter {
         await this.authorize();
       }
     }
-    console.log("Connected", this.rpc.application);
+
     this.myClientId = this.rpc.user.id;
     this.setup();
   }
@@ -153,6 +139,8 @@ export class DcApi extends EventEmitter {
   }
 
   public async reconnect() {
+    console.warn("Lost connection to discord. Trying to reconnect ...");
+    this.emit("Warn", "Lost connection to discord. Trying to reconnect ...");
     this.rpc = undefined;
     this.connect();
   }

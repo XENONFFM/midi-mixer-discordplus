@@ -3,7 +3,7 @@
   "id": "com.midi-mixer.discordplus",
   "name": "Discord+",
   "type": "node",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "author": "https://github.com/XENONFFM",
   "main": "lib/main.js",
   "icon": "icon.svg",

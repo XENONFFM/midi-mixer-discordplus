@@ -1,6 +1,6 @@
 {
   "name": "com.midi-mixer.discordplus",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "Discord+",
   "main": "lib/main.js",
   "directories": {
