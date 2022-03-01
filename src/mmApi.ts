@@ -45,7 +45,7 @@ export class MmApi {
           if (this.dcApi.client) this.dcApi.client.toggleMute();
         })
         .on("volumeChanged", async (level: number) => {
-          if (this.dcApi.client) this.dcApi.client.setInputVolume(level * 200);
+          if (this.dcApi.client) this.dcApi.client.setInputVolume(Math.round(level * 100));
         }),
       [DcFader.OutputVolume]: new Assignment("Output", { name: "Output", volume: 0,  throttle: 50 })
         .on("mutePressed", async () => {
@@ -103,7 +103,8 @@ export class MmApi {
 
   public updateClientGroup(data: clientUpdate) {
     if (this.clientGroup) {
-      if (data.volume) this.clientGroup[DcFader.InputVolume].volume = data.volume / 200;
+      console.log("vol", data, data.InputVolume);
+      if (data.InputVolume) this.clientGroup[DcFader.InputVolume].volume = data.InputVolume / 100;
       if (data.mute) {this.clientGroup[DcFader.InputVolume].muted = data.mute;}
       if (data.deaf) this.clientGroup[DcFader.OutputVolume].muted = data.deaf;
     }

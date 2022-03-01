@@ -267,10 +267,10 @@ export class DcApi extends EventEmitter {
     (await (this.rpc.subscribe("VOICE_STATE_DELETE", { channel_id: voiceChannelId }))).unsubscribe();
   }
 
-  private changedClientSettings(obj1: VoiceSettings, obj2: VoiceSettings) {
-    if (obj1.deaf != obj2.deaf) this.emit("Client", { deaf: obj2.deaf });
-    if (obj1.mute != obj2.mute) this.emit("Client", { mute: obj2.mute });
-    if (obj1.input?.volume != obj2.input?.volume) this.emit("Client", { input: { volume: obj2.input?.volume } });
+  private changedClientSettings(newVS: VoiceSettings, oldVS: VoiceSettings) {
+    if (newVS.deaf != oldVS.deaf) this.emit("Client", { deaf: newVS.deaf });
+    if (newVS.mute != oldVS.mute) this.emit("Client", { mute: newVS.mute });
+    if (newVS.input?.volume != oldVS.input?.volume) this.emit("Client", { InputVolume: newVS.input?.volume });
   }
 
   private changedUserSettings(id: number, newVSP: voiceSettingsPayload, currentVSP: voiceSettingsPayload) {
@@ -358,10 +358,11 @@ class voiceClient {
   }
 
   public async setInputVolume(volume: number) {
-    if (this.vS.input?.volume && volume >= 0 && volume <= 200)
+    if (this.vS.input?.volume && volume >= 0 && volume <= 100)
+      console.log("1VoiceClient volume set to:", this.vS.input?.volume);
       // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
       this.vS.input.volume = (await this.rpc.setVoiceSettings({ input: { volume: volume } })).input?.volume;
-    console.log("VoiceClient volume set to:", this.vS.input?.volume);
+      console.log("2VoiceClient volume set to:", this.vS.input?.volume);
     return this.vS.input?.volume;
   }
 

@@ -43,5 +43,5 @@ import EventEmitter from "events";
   export type clientUpdate = {
     mute?: boolean,
     deaf?: boolean,
-    volume?: number;
+    InputVolume?: number;
   }
