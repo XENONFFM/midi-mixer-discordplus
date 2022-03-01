@@ -125,6 +125,10 @@ export class DcApi extends EventEmitter {
 
     if(this.rpc)
     this.client = new voiceClient(this.rpc, await this.rpc.getVoiceSettings());
+    //TODO rework
+    this.emit("Client", { mute: this.client?.getVS().mute});
+    this.emit("Client", { deaf: this.client?.getVS().deaf});
+    this.emit("Client", { InputVolume: this.client?.getVS().input?.volume});
 
     // @ts-ignore
     let connectedToVoiceChannel = await this.rpc.request("GET_SELECTED_VOICE_CHANNEL");
@@ -267,13 +271,13 @@ export class DcApi extends EventEmitter {
     (await (this.rpc.subscribe("VOICE_STATE_DELETE", { channel_id: voiceChannelId }))).unsubscribe();
   }
 
-  private changedClientSettings(newVS: VoiceSettings, oldVS: VoiceSettings) {
+  private changedClientSettings(newVS: VoiceSettings, oldVS: VoiceSettings) { //TODO rework
     if (newVS.deaf != oldVS.deaf) this.emit("Client", { deaf: newVS.deaf });
     if (newVS.mute != oldVS.mute) this.emit("Client", { mute: newVS.mute });
     if (newVS.input?.volume != oldVS.input?.volume) this.emit("Client", { InputVolume: newVS.input?.volume });
   }
 
-  private changedUserSettings(id: number, newVSP: voiceSettingsPayload, currentVSP: voiceSettingsPayload) {
+  private changedUserSettings(id: number, newVSP: voiceSettingsPayload, currentVSP: voiceSettingsPayload) { //TODO rework
     if (newVSP.mute != currentVSP.mute) this.emit("User", { type: "UPDATE", id: id, name: newVSP.nick, mute: newVSP.mute });
     if (newVSP.volume != currentVSP.volume) this.emit("User", { type: "UPDATE", id: id, name: newVSP.nick, volume: newVSP.volume });
   }
@@ -359,30 +363,36 @@ class voiceClient {
 
   public async setInputVolume(volume: number) {
     if (this.vS.input?.volume && volume >= 0 && volume <= 100)
-      console.log("1VoiceClient volume set to:", this.vS.input?.volume);
       // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
       this.vS.input.volume = (await this.rpc.setVoiceSettings({ input: { volume: volume } })).input?.volume;
-      console.log("2VoiceClient volume set to:", this.vS.input?.volume);
+      console.log("VoiceClient volume set to:", this.vS.input?.volume);
     return this.vS.input?.volume;
   }
 
   public async toggleMute() {
-    // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
-    this.vS.mute = (await this.rpc.setVoiceSettings({ mute: !this.vS.mute })).mute;
-    console.log("voiceClient mute set to:.", this.vS.mute);
+    if (this.vS.deaf) {
+      // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
+      let newVS = await this.rpc.setVoiceSettings({ deaf: false, mute: false });
+      this.vS.mute = newVS.mute;
+      this.vS.deaf = newVS.deaf;
+    } else {
+      // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
+      this.vS.mute = (await this.rpc.setVoiceSettings({ mute: !this.vS.mute })).mute;
+    }
+    console.log("voiceClient mute set to:", this.vS.mute);
     return this.vS.mute;
   }
 
   public async setDeaf(deaf: boolean) {
     // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
-    this.vS.deaf = (await this.rpc.setVoiceSettings({ deaf: this.deaf })).deaf;
+    this.vS.deaf = (await this.rpc.setVoiceSettings({ deaf: deaf })).deaf;
     console.log("voiceClient set deaf:", this.vS.deaf);
     return this.vS.deaf;
   }
 
   public async toggleDeaf() {
     // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
-    this.deaf = (await this.rpc.setVoiceSettings({ deaf: !this.deaf })).deaf;
+    this.deaf = (await this.rpc.setVoiceSettings({ deaf: !this.vS.deaf })).deaf;
     console.log("voiceClient toggled deaf:", this.vS.deaf);
     return this.vS.deaf;
   }

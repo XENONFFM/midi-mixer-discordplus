@@ -78,7 +78,7 @@ export class MmApi {
     Object.values(this.userGroup ?? {}).forEach((fader) => void fader.remove());
   }
 
-  public updateUserGroup(data: userUpdate) {
+  public updateUserGroup(data: userUpdate) { //TODO rework
     if (this.userGroup[data.id]) {
       switch (data.type) {
         case("DELETE"): {
@@ -101,9 +101,8 @@ export class MmApi {
     }
   }
 
-  public updateClientGroup(data: clientUpdate) {
+  public updateClientGroup(data: clientUpdate) { //TODO rework
     if (this.clientGroup) {
-      console.log("vol", data, data.InputVolume);
       if (data.InputVolume) this.clientGroup[DcFader.InputVolume].volume = data.InputVolume / 100;
       if (data.mute) {this.clientGroup[DcFader.InputVolume].muted = data.mute;}
       if (data.deaf) this.clientGroup[DcFader.OutputVolume].muted = data.deaf;
