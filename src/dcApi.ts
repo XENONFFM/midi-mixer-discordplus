@@ -367,7 +367,7 @@ class voiceClient {
 
   public async toggleMute() {
     // @ts-ignore RPC: VoiceSettings is wrong implemented: all parameters should be optional
-    this.vS.mute = (await this.rpc.setUserVoiceSettings({ mute: !this.vS.mute })).mute;
+    this.vS.mute = (await this.rpc.setVoiceSettings({ mute: !this.vS.mute })).mute;
     console.log("voiceClient mute set to:.", this.vS.mute);
     return this.vS.mute;
   }
