@@ -7,7 +7,7 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node lib/main.js",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "dist": "midi-mixer pack"

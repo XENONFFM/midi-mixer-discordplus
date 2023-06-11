@@ -10,8 +10,9 @@ export class DcApi extends EventEmitter {
     "rpc.voice.write",
   ];
   
-  private rpc?: RPC.Client;
-  
+  private rpc: RPC.Client;
+  private connected: boolean;
+  private ready: boolean;
   private clientId: string;
   private clientSecret: string;
   
@@ -23,61 +24,87 @@ export class DcApi extends EventEmitter {
   public user: voiceUser[] = [];
   
   constructor(clientId: string, clientSecret: string) {
-    super()
+    super();
+    this.rpc = new RPC.Client({ transport: "ipc" });
     this.clientId = clientId;
     this.clientSecret = clientSecret;
+    this.connected = false;
+    this.ready = false;
   }
   
-  public async connect(): Promise<void> {
-    let connected = false;
-    let logedin = false;
+  public async start() {
+    this.newClient();
+    
+    while (!this.connected) {
+      this.connect();
+    }
+    
+    while (!this.ready) {
+      this.authenticate();
+    }
+  }
+  
+  private async connect() {
+    await this.rpc.connect(this.clientId)
+    .catch(async (err) => {
+      console.warn("Could not establish connection to discord. retrying in 15 seconds.", err);
+      this.emit("Warn", "No discord client running");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      this.newClient();
+    })
+  }
+
+  private async authenticate() {
     let accessToken = config.get(Keys.AuthToken) as string;
-    this.rpc = new RPC.Client({ transport: "ipc" });
-    
-    this.rpc.on("ready", () => { console.log("READY"); logedin = true });
-    this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
-    
-    while (!connected) {
-      await this.rpc.connect(this.clientId)
+    if (accessToken && typeof accessToken === "string") {
+      await this.rpc.login({ clientId: this.clientId, accessToken: accessToken, scopes: DcApi.scopes })
+        .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
         .catch(async (err) => {
-          console.warn("Could not establish connection to discord. retrying in 15 seconds.", err);
-          this.emit("Warn", "No discord client running");
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          this.rpc = new RPC.Client({ transport: "ipc" });
-          this.rpc.on("ready", () => { console.log("READY"); logedin = true });
-          this.rpc.on("connected", () => { console.log("CONNECTED"); connected = true });
+          config.delete(Keys.AuthToken);
+          console.warn("Failed to authorise using existing token.", err);
+          await this.authorize();
         })
+    } else {
+      await this.authorize();
     }
-
-    while (!logedin) {
-      if (accessToken && typeof accessToken === "string") {
-        await this.rpc.login({ clientId: this.clientId, accessToken: accessToken, scopes: DcApi.scopes })
-          .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
-          .catch(async (err) => {
-            config.delete(Keys.AuthToken);
-            console.warn("Failed to authorise using existing token.", err);
-            await this.authorize();
-          })
-      } else {
-        await this.authorize();
-      }
-    }
-
-    this.myClientId = this.rpc.user.id;
-    this.setup();
   }
 
   private async authorize() {
     console.log("Waiting for user authorisation");
-    this.emit("Warn", "Waiting for user authorisation");
+    this.emit("Status", "Waiting for user authorisation");
+    await this.rpc.login({ clientId: this.clientId, clientSecret: this.clientSecret, scopes: DcApi.scopes, redirectUri: "http://localhost/" })
+    .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
+    .catch(async (err) => {
+      this.emit("Error", "User declined authorisation.");
+      throw err;
+    });
+  }
 
-    await this.rpc?.login({ clientId: this.clientId, clientSecret: this.clientSecret, scopes: DcApi.scopes, redirectUri: "http://localhost/" })
-      .then((data: any) => { config.set(Keys.AuthToken, data.accessToken) })
-      .catch(async (err) => {
-        console.warn("User declined authorisation. Retrying in 5 seconds.", err);
-        this.emit("Warn", "User declined authorisation. Retrying in 5 seconds.");
-        await new Promise(resolve => setTimeout(resolve, 5000));
+  private newClient() {
+      this.rpc = new RPC.Client({ transport: "ipc" });
+      this.rpc.on("ready", () => { 
+        this.ready = true;
+        this.myClientId = this.rpc.user.id;
+        console.log("READY"); 
+        this.setup();
       });
+      this.rpc.on("connected", () => { 
+        this.connected = true;
+        console.log("CONNECTED"); 
+      });
+  }
+
+  public async disconnect(): Promise<void> {
+    if (this.currentVcId) {
+      this.unsubscribeToUserVoiceChanges(this.currentVcId);
+    }
+    await this.rpc.destroy();
+  }
+
+  public async reconnect() {
+    console.warn("Lost connection to discord. Trying to reconnect ...");
+    this.emit("Warn", "Lost connection to discord. Trying to reconnect ...");
+    this.start();
   }
 
   private async setup() {
@@ -123,7 +150,6 @@ export class DcApi extends EventEmitter {
       if (err.message == "connection closed") this.reconnect();
     });
 
-    if(this.rpc)
     this.client = new voiceClient(this.rpc, await this.rpc.getVoiceSettings());
     //TODO rework
     this.emit("Client", { mute: this.client?.getVS().mute});
@@ -133,20 +159,6 @@ export class DcApi extends EventEmitter {
     // @ts-ignore
     let connectedToVoiceChannel = await this.rpc.request("GET_SELECTED_VOICE_CHANNEL");
     if(connectedToVoiceChannel) this.connectToVoiceChannel(connectedToVoiceChannel.id);
-  }
-
-  public async disconnect(): Promise<void> {
-    if (this.currentVcId) {
-      this.unsubscribeToUserVoiceChanges(this.currentVcId);
-    }
-    await this.rpc?.destroy();
-  }
-
-  public async reconnect() {
-    console.warn("Lost connection to discord. Trying to reconnect ...");
-    this.emit("Warn", "Lost connection to discord. Trying to reconnect ...");
-    this.rpc = undefined;
-    this.connect();
   }
 
   private async updateClientVoiceSettings(vS: VoiceSettings) { //TODO rework

@@ -51,7 +51,7 @@ const connect = async () => {
   $MM.setSettingsStatus("status", "Connecting to Discord ...");
   dcApi.on("Status" || "Warn" || "Error", (message: string) => { $MM.setSettingsStatus("status", message) });
   try {
-    await dcApi.connect();
+    await dcApi.start();
   } catch (err) {
     console.error("Disconected, could not establish connection to discord.", err);
     cleanUpConnections();
